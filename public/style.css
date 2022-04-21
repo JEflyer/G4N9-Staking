@@ -1,0 +1,233 @@
+@charset "utf-8";
+/* CSS Document */
+
+@font-face {
+	src: url("fonts/Casanova_Scotia.woff") format("woff");
+	font-family: "Casanova-Scotia";
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+	src: url("fonts/Montserrat-Regular.woff") format("woff");
+	font-family: "Montserrat-Regular";
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root{
+	--Scotia-font: "Casanova-Scotia";
+	--regular-font: "Montserrat-Regular";
+}
+
+*{
+	margin: 0px;
+	padding: 0px;
+	font-family: var(--regular-font);
+}
+
+ul, ol{
+	list-style: none;
+	margin: 0px;
+	padding: 0px;
+}
+
+body{
+	overflow-x: hidden;
+}
+
+.page-container{
+	max-width: 1800px;
+	margin: auto;
+}
+
+.cryptog4n9BG{
+	background-image: url("images/bg.png");
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: cover;
+}
+
+.brandArea img{
+	width: 350px;
+	margin: auto;
+	display: block;
+	padding-top: 60px;
+}
+
+.sectionIntro h2{
+	font-size: 2rem;
+	text-transform: uppercase;
+	text-align: center;
+	color: white;
+	font-family: var(--Scotia-font);
+}
+
+.sectionIntro p{
+	font-size: 1rem;
+	text-transform: uppercase;
+	text-align: center;
+	color: white;
+	max-width: 900px;
+	margin: auto;
+}
+
+.rankarea{
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding-top: 10px;
+}
+
+.rankarea p{
+	color: #537ce3;
+	font-size: 1.1rem;
+	font-weight: 600;
+	padding: 0px 15px;
+	margin: 0px;
+}
+
+.rankarea p:nth-child(2){
+	border-left: 2px solid #537ce3;
+	border-right: 2px solid #537ce3;
+}
+
+.pageFooter ol{
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.pageFooter ol li a img{
+	width: 35px;
+}
+
+.pageFooter ol li{
+	padding: 5px;
+}
+
+.insideBordHead p{
+	color: white;
+	text-transform: uppercase;
+	font-weight: 500;
+}
+
+.insideBordHead p span{
+	color: #537ce3;
+	padding-left: 10px;
+}
+
+.insideBordHead{
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	max-width: 1500px;
+	margin: auto;
+}
+
+.insideBordHead div{
+	display: flex;
+}
+
+.insideBordHead a span{
+	padding: 5px;
+	background-color: #a5a5a5;
+	margin: 0px;
+	margin-left: 15px;
+	color: #000;
+	border-radius: 4px;
+	font-size: 0.9rem;
+	font-weight: 600;
+}
+
+.borderimg{
+	width: 100%;
+}
+
+.teamGallery{
+	position: relative;
+}
+
+.insideGallery{
+	position: absolute;
+	width: 100%;
+	top: 85px;
+}
+
+.blue{
+	background-color: #537ce3!important;
+	color: white!important;
+	font-weight: 500!important;
+}
+
+.mxwth{
+	max-width: 1100px;
+}
+
+.teamslide{
+	max-width: 1500px;
+	margin: auto;
+}
+
+.teamslide img{
+	border: 1px solid #fff;
+	transition: 0.5s;
+}
+
+.teamslide .item:hover img{
+	border: 1px solid #537ce3;
+}
+
+.teamslide{
+	padding: 20px 0px 30px 0px;
+}
+
+.itembtn{
+	display: flex;
+	justify-content: space-between;
+	padding: 20px 0px;
+}
+
+.itembtn span{
+	color: #000;
+	text-transform: uppercase;
+	background-color: #537ce3;
+	padding: 10px 20px;
+	border-radius: 10px;
+	font-weight: 600;
+}
+
+.unstakebtn{
+	background-color: #a5a5a5!important;
+}
+
+.teamItem{
+	display: flex;
+}
+
+.teamItem .item{
+	width: 320px;
+	margin: 10px;
+}
+
+.teamItem .item img{
+	width: 100%;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
