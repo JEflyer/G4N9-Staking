@@ -3,10 +3,10 @@ import Web3 from "web3";
 import minterABI from "./minterABI.json";
 import stakingABI from "./stakingABI.json";
 import tokenABI from "./tokenABI.json";
-import ReactDOM from "react-dom";
 import { useState } from "react";
-require("dotenv").config()
+import {ethers} from "ethers";
 
+require("dotenv").config()
 
 const stakingContractAddress = ""
 const minterContractAddress = "0xb195991d16c1473bdF4b122A2eD0245113fCb2F9"
@@ -18,7 +18,7 @@ const INFURA_KEY = process.env.INFURA_KEY;
 const wallets = [
     { walletName: "metamask", preferred: true },
     { walletName: "ledger", rpcUrl: RPC_URL,  preferred: true },
-    { walletName: "walletConnect", infuraKey: INFURA_KEY, preferred: true }
+    { walletName: "walletConnect", infuraKey: INFURA_KEY, rpcUrl: RPC_URL, preferred: true }
 ];
 
 var web3;
@@ -41,7 +41,6 @@ const onboard = Onboard({
             stakingContract = new web3.eth.Contract(stakingABI, stakingContractAddress)
             minterContract = new web3.eth.Contract(minterABI, minterContractAddress)
             tokenContract = new web3.eth.Contract(tokenABI, tokenContractAddress)
-            NumStaked.getNumStaked()
         }
     }
 });
@@ -49,85 +48,67 @@ const onboard = Onboard({
 
 const BlockNative = () => {
 
-    const [wltAddress, setWltAddress] = useState("Not Connected");
+	// wallet address
+	const [wltAddress, setWltAddress] = useState("Not Connected");
+    
+	//number of troops currently staked by a user
+	const [numStaked, setNumStaked] = useState(0);
 
+	//5 NFTs that are being displayed currently
+    const [display,setDisplay] = useState(["0","0","0","0","0"])
+
+	//current $g4n9 token balance
+    const [bal, setBal] = useState(0);
+
+	//number of troops owned
+    const [numOfTroops,setNumOfTroops] = useState(0);
+
+	//claimable rewards
+    const [pendingRewards, setPendingRewards] = useState(0);
+
+	//total staked troops
+    const [totalStaked, setTotalStaked] = useState(0);
+
+	//array of tokens currently selected to be staked
+	const [selected,setSelected] = useState([]);
+
+	//array of tokens the user holds
+    const [wallet,setWallet] = useState([])
+
+	//int for storing what page of 5 NFTs are being viewed
+    const [page, setPage] = useState(0)
+
+	//array of tokens the user has already staked
+	const [staked, setStaked] = useState([])
+
+	//does this need a comment?
+	const [percentStaked, setPercentStaked] = useState(0);
+
+	//wallet login function
     async function login() {
         const walletSelected = await onboard.walletSelect();
         if (walletSelected !== false) {
             const walletCheck = await onboard.walletCheck();
             setWltAddress(onboard.getState().address);
-
+			update();
         }
     }
 
-    return (
-        <div>
-            <div className="App">
-                <button id="connectWallet" className="connectWalletButton" onClick={login}>
-                    Connect wallet
-                </button>
-                <p className="walletAddress">{wltAddress}</p>
-            </div>
+	//function for updating stats across UI
+	function update() {
+		getPendingRewards()
+		getTroops()
+		getBal()
+		getWallet()
 
+	}
 
-        </div>
-    )
-}
-
-const NumStaked = () => {
-    [num,setNum] = useState();
-
-    async function getNumStaked(){
-        const currentState = onboard.getState();
-        setNum(await stakingContract.methods.getNoStaked(currentState.address).call())
-    }
-}
-
-const TEDR = () => {
-    return (NumStaked.num*0.5)
-}
-
-const Balance = () => {
-    [bal,setBal] = useState(0)
-
-    async function getBal(){
-        const currentState = onboard.getState();
-        setBal(await tokenContract.methods.balanceOf(currentState.address).call())
-    }
-}
-
-const numOfTroops = () => {
-
-    [num, setNum] = useState();
-
-    async function getTroops(){
-        const currentState = onboard.getState()
-        setNum(await stakingContract.methods.getNoStaked(currentSTate.address).call())
-    }
-
-}
-
-const PR = () => {
-    [amount, setAmount] = useState()
-
-    async function getPendingRewards(){
-        const currentState = onboard.getState();
-        setAmount(await stakingContract.methods.getClaimable(currentState.address).call())
-    }
-}
-
-const NFTsToBeStakedOrUnstaked = () => {
-
-    [selected,setSelected] = useState([]);
-    [wallet,setWallet] = useState([])
-    [display,setDisplay] = useState([])
-    [page, setPage] = useState(0)
-
-
-    async function sleep(ms){
+	//pauses for x ms
+	async function sleep(ms){
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+	//for staking a single token get approval for token then ask for to stake
     async function stakeOne(token){
         const currentState = onboard.getState()
         await minterContract.methods.approve(stakingContractAddress, token).send({
@@ -135,7 +116,7 @@ const NFTsToBeStakedOrUnstaked = () => {
             gasPrice: '31000000000'
         })
 
-        await sleep(1000)
+        await sleep(10000)
 
         await stakingContract.methods.stakeOne(token).send({
             from: currentState.address,
@@ -143,6 +124,8 @@ const NFTsToBeStakedOrUnstaked = () => {
         })
     }
 
+	//for staking multiple tokens at once
+	//must add check to make sure there are multiple tokens
     async function stakeMul(){
         const currentState = onboard.getState()
         await minterContract.methods.setApprovalForAll(stakingContractAddress, true).send({
@@ -150,7 +133,7 @@ const NFTsToBeStakedOrUnstaked = () => {
             gasPrice: '31000000000'
         })
 
-        await sleep(1000)
+        await sleep(10000)
 
         await stakingContract.methods.stakeMul(selected).send({
             from: currentState.address,
@@ -158,6 +141,7 @@ const NFTsToBeStakedOrUnstaked = () => {
         })
     }
 
+	//for unstaking a singe token
     async function unstakeOne(token){
         const currentState = onboard.getState()
         await stakingContract.methods.unstakeOne(token).send({
@@ -166,6 +150,8 @@ const NFTsToBeStakedOrUnstaked = () => {
         })
     }
 
+	//for unstaking multiple tokens
+	//must add check to make sure the array has tokens in it
     async function unstakeMul(){
         const currentState = onboard.getState()
         await stakingContract.methods.unstakeMul(selected).send({
@@ -174,16 +160,56 @@ const NFTsToBeStakedOrUnstaked = () => {
         })
     }
 
-    async function getWallet(){
-        const currentState = onboard.getState()
-        setWallet(await minterContract.methods.walletOfOwner(currentState.address).call())
-        setDisplay(wallet[0],wallet[1],wallet[2],wallet[3],wallet[4])
+	//increment page
+	//add checks to make sure the tokens will be on the next page
+	function nextPage(){
+        setPage(page+1)
+        displayNFTs()
     }
 
-    function Arr (token) {
+	//decrement page
+	//add checks to make sure tokens will be on next page
+    function backPage(){
+        setPage(page-1)
+        displayNFTs()
+    }
+
+	//updates NFTs diplayed
+	function displayNFTs(){
+        setDisplay(wallet[0+page*5],wallet[1+page*5],wallet[2+page*5],wallet[3+page*5],wallet[4+page*5])
+    }
+
+	//for getting the current amount of tokens due to be rewarded
+	async function getPendingRewards(){
+        const currentState = onboard.getState();
+        let val = ethers.utils.formatEther(await stakingContract.methods.getClaimable(currentState.address).call())
+		setPendingRewards(val)
+    }
+
+	//for getting the current tokens that are staked
+	async function getTroops(){
+        const currentState = onboard.getState()
+        setStaked(await stakingContract.methods.getTokensStaked(currentState.address).call())
+		setNumStaked(staked.length)
+    }
+
+	//get current $g4n9 token balance
+	async function getBal(){
+        const currentState = onboard.getState();
+        setBal(await tokenContract.methods.balanceOf(currentState.address).call())
+    }
+
+	//for getting the tokens a user holds & set total number of troops in wallet
+	async function getWallet(){
+        const currentState = onboard.getState();
+        setWallet(await minterContract.methods.walletOfOwner(currentState.address).call())
+		setNumOfTroops(wallet.length)
+    }
+
+	function Arr (token) {
         let bool = false;
         for(let i = 0; i< selected.length; i++){
-            if(selected[i] == token){
+            if(selected[i] === token){
                 let arr = selected.splice(i,1)
                 setSelected(arr)
                 bool = true
@@ -196,58 +222,138 @@ const NFTsToBeStakedOrUnstaked = () => {
         }
     }
 
-    function NFT (token){
-
-        return(
-            <div class="item">
-                <div class="itempep">
-                    <img src={"ipfs://QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+token.toStirng()+".png"} alt="" />
-                    <div class="itembtn">
-                        <a onClick={stakeOne(token)}><span class="unstakebtn">Unstake</span></a>
-                        <a onClick={unstakeOne(token)}><span class="viewbtn">View</span></a>
-                        <a onClick={Arr(token)}><span class ="viewbtn">Select</span></a>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
-    function nextPage(){
-        setPage(page+1)
-        displayNFTs()
-    }
-
-    function backPage(){
-        setPage(page+1)
-        displayNFTs()
-    }
-
-
-    function displayNFTs(){
-        setDisplay(wallet[0+page*5],wallet[1+page*5],wallet[2+page*5],wallet[3+page*5],wallet[4+page*5])
-    }
-
-    return(
-        <div>
-            <NFT token={display[0]}/>
-            <NFT token={display[1]}/>
-            <NFT token={display[2]}/>
-            <NFT token={display[3]}/>
-            <NFT token={display[4]}/>
-
-            <button onClick={nextPage}> Next</button>
-            <button onClick={backPage}> Back</button>
-        </div>
+    return (
+        <section>
+			<div class="cryptog4n9BG">
+				<div class="container-fluid">
+					<div class="page-container">
+						<div class="brandArea">
+							<img src="images/icons/logo.png" alt="" />
+						</div>					
+						<div class="sectionIntro">
+							<div class="py-4"></div>
+							<h2>Barracks</h2>
+							<p>
+							   Welcome to the cryptog4n9 staking barracks! put your troops to work and earn rewards!
+							   every 12-hours the barracks will reward you with $g4n9 token!
+							</p>
+						</div>
+						<div className="App">
+							<button id="connectWallet" className="connectWalletButton" onClick={login}>
+								Connect wallet
+							</button>
+							<p className="walletAddress">{wltAddress}</p>
+						</div>
+						<div class="teamGallery">
+							<img class="borderimg" src="images/border.png" alt="" />
+							<div class="insideGallery">
+								<div class="midinsideGAL">
+									<div class="insideBordHead">
+										<p>account : {wltAddress}</p>	
+										<div>
+											 <p>number g4n9 troops staked :{numStaked}</p>	
+											 <a href="#"><span>UNSTAKE ALL</span></a>
+										</div>	
+										<p>daily rewards per troops : 0.5 $G4N9</p>
+										<p>your daily rewards : {0.5*numStaked} $G4N9 Per Day</p>
+									</div>	
+								
+									<div class="teamslide">
+										<div class="teamItem">
+											<div class="item">
+												<div class="itempep">
+													<img src={"ipfs://QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+display[0]+".png"} alt="" />
+													<div class="itembtn">
+														<a onClick={stakeOne(display[0])}><span class="unstakebtn">Unstake</span></a>
+														<a onClick={unstakeOne(display[0])}><span class="viewbtn">View</span></a>
+														<a onClick={Arr(display[0])}><span class ="viewbtn">Select</span></a>
+													</div>
+												</div>
+											</div>
+											<div class="item">
+												<div class="itempep">
+													<img src={"ipfs://QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+display[1]+".png"} alt="" />
+													<div class="itembtn">
+														<a onClick={stakeOne(display[1])}><span class="unstakebtn">Unstake</span></a>
+														<a onClick={unstakeOne(display[1])}><span class="viewbtn">View</span></a>
+														<a onClick={Arr(display[1])}><span class ="viewbtn">Select</span></a>
+													</div>
+												</div>
+											</div>
+											<div class="item">
+												<div class="itempep">
+													<img src={"ipfs://QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+display[2]+".png"} alt="" />
+													<div class="itembtn">
+														<a onClick={stakeOne(display[2])}><span class="unstakebtn">Unstake</span></a>
+														<a onClick={unstakeOne(display[2])}><span class="viewbtn">View</span></a>
+														<a onClick={Arr(display[2])}><span class ="viewbtn">Select</span></a>
+													</div>
+												</div>
+											</div>
+											<div class="item">
+												<div class="itempep">
+													<img src={"ipfs://QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+display[3]+".png"} alt="" />
+													<div class="itembtn">
+														<a onClick={stakeOne(display[3])}><span class="unstakebtn">Unstake</span></a>
+														<a onClick={unstakeOne(display[3])}><span class="viewbtn">View</span></a>
+														<a onClick={Arr(display[3])}><span class ="viewbtn">Select</span></a>
+													</div>
+												</div>
+											</div>
+											<div class="item">
+												<div class="itempep">
+													<img src={"ipfs://QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+display[4]+".png"} alt="" />
+													<div class="itembtn">
+														<a onClick={stakeOne(display[4])}><span class="unstakebtn">Unstake</span></a>
+														<a onClick={unstakeOne(display[4])}><span class="viewbtn">View</span></a>
+														<a onClick={Arr(display[4])}><span class ="viewbtn">Select</span></a>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								
+									<div class="insideBordHead mxwth">
+										<p>$g4n9 balance :{bal}</p>	
+										<div>
+											 <p>g4n9 troops : {numOfTroops}</p>	
+											 <a href="#"><span class="blue">STAKE ALL</span></a>
+										</div>	
+										<div>
+											 <p>pending $g4n9 token rewards : {pendingRewards}</p>	
+											 <a href="#"><span class="blue">claim</span></a>
+										</div>	
+									</div>
+								</div>
+							</div>	
+						</div>
+						<div class="pageFooter">
+							<div class="rankarea">
+								<p>
+									{percentStaked}% cryptog4n9 staked
+								</p>								
+								<p>
+									{totalStaked}/10000
+								</p>								
+								<p>
+									owners staking : {numStaked}
+								</p>
+							</div>
+							<div class="py-2"></div>
+							<ol>
+								<li><a href="#"><img src="images/icons/insta.png" alt="" /></a></li>
+								<li><a href="#"><img src="images/icons/tiktalk-File.png" alt="" /></a></li>
+								<li><a href="#"><img src="images/icons/fb.png" alt="" /></a></li>
+								<li><a href="#"><img src="images/icons/twitter.png" alt="" /></a></li>
+								<li><a href="#"><img src="images/icons/discord.png" alt="" /></a></li>
+							</ol>
+							<div class="py-3"></div>
+						</div>
+					</div>
+				 </div>
+			</div> 
+		</section>
     )
-
 }
 
-
-export {
-    BlockNative,
-    NumStaked,
-    TEDR,
-    Balance,
-    PR,
-    NFTsToBeStakedOrUnstaked
-}
+export default BlockNative;
