@@ -3,13 +3,13 @@ import Web3 from "web3";
 import minterABI from "./minterABI.json";
 import stakingABI from "./stakingABI.json";
 import tokenABI from "./tokenABI.json";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {ethers} from "ethers";
 
 require("dotenv").config()
 
 //rinkeby
-const stakingContractAddress = "0x32E4e97d567457911A5E3aFDb68371AF68CCd50e"
+const stakingContractAddress = "0xCbD590Da69E8513839Da28891EbfB851a82EFC74"
 const minterContractAddress = "0x58CEc8713D09E3A9eF63c115C4B36bf113C2bd58"
 const tokenContractAddress = "0xc09B4835885d2F58469cA12f6A2caB079a12d78D"
 
@@ -18,8 +18,8 @@ const tokenContractAddress = "0xc09B4835885d2F58469cA12f6A2caB079a12d78D"
 // const minterContractAddress = "0xb195991d16c1473bdF4b122A2eD0245113fCb2F9"
 // const tokenContractAddress = "0x21985fc0a5Ea706e1496b5CaF5b2a1af24deC64d"
 
-const RPC_URL = process.env.RPC_URL;
-const INFURA_KEY = process.env.INFURA_KEY;
+// const RPC_URL = process.env.RPC_URL;
+// const INFURA_KEY = process.env.INFURA_KEY;
 
 const wallets = [
     { walletName: "metamask", preferred: true },
@@ -60,8 +60,8 @@ const BlockNative = () => {
 	//number of troops currently staked by a user
 	const [numStaked, setNumStaked] = useState(0);
 
-	//5 NFTs that are being displayed currently
-    const [display,setDisplay] = useState(["1","1","1","1","1", "1"])
+	//6 NFTs that are being displayed currently
+    const [display,setDisplay] = useState(["1","1","1","1","1","1"])
 
 	//current $g4n9 token balance
     const [bal, setBal] = useState(0);
@@ -105,11 +105,12 @@ const BlockNative = () => {
 
 	//function for updating stats across UI
 	async function update() {
-		await sleep(1000)
-		getPendingRewards()
-		getTroops()
-		getBal()
-		getWallet()
+		await getBal()
+		await getWallet()
+		await getTroops()
+		await getTotalStaked()
+		await getPendingRewards()
+		displayNFTs()
 
 	}
 
@@ -128,7 +129,7 @@ const BlockNative = () => {
         }).then(res => {
 			console.log(res)
 
-			stakingContract.methods.stakeOne(token).send({
+			stakingContract.methods.stake(token).send({
 				from: currentState.address,
 				gasPrice: '31000000000'
 			}).then(res => {
@@ -170,7 +171,7 @@ const BlockNative = () => {
 	//for unstaking a singe token
     async function unstakeOne(token){
         const currentState = onboard.getState()
-        stakingContract.methods.unstakeOne(token).send({
+        stakingContract.methods.unstake(token).send({
             from: currentState.address,
             gasPrice: '31000000000'
         }).then(res => {
@@ -209,20 +210,35 @@ const BlockNative = () => {
     }
 
 	//updates NFTs diplayed
-	function displayNFTs(){
-        setDisplay(wallet[0+page*6],wallet[1+page*6],wallet[2+page*6],wallet[3+page*6],wallet[4+page*6], wallet[5+page*6])
-    }
+	async function displayNFTs(){
+		await sleep(3000)
+        setDisplay([wallet[0+page*6],wallet[1+page*6],wallet[2+page*6],wallet[3+page*6],wallet[4+page*6], wallet[5+page*6]])	
+	}
 
 	//for getting the current amount of tokens due to be rewarded
 	async function getPendingRewards(){
         const currentState = onboard.getState();
-        stakingContract.methods.getClaimable(currentState.address).call({from: currentState.address})
-			.then(res => {
-				console.log("claimable: ",res)
-				setPendingRewards(res)
-			}).catch(err => {
-				console.error("claimable: ",err)
-			})
+        
+		for(let i = 0 ; i< numStaked; i++){
+			stakingContract.methods.getTotalPayout(currentState.addres).call({from: currentState.address})
+				.then(res => {
+					console.log(res)
+					setPendingRewards(ethers.utils.formatEther(res));
+				})
+				.catch(err => {
+					console.error(err);
+				})
+
+		}
+		
+		
+		// stakingContract.methods.getClaimable(currentState.address).call({from: currentState.address})
+		// 	.then(res => {
+		// 		console.log("claimable: ",res)
+		// 		setPendingRewards(res)
+		// 	}).catch(err => {
+		// 		console.error("claimable: ",err)
+		// 	})
     }
 
 	//for getting the current tokens that are staked
@@ -231,20 +247,33 @@ const BlockNative = () => {
         stakingContract.methods.getTokensStaked(currentState.address).call({from: currentState.address})
 			.then(res => {
 				console.log("staked: ",res)
-				setStaked(res)
-				setNumStaked(res.length)
+
+				let arr = []
+				let counter = 0
+
+				for(let i = 0; i< res.length; i++){
+					if(res[i] != 0){
+						arr[counter] = res[i]
+						counter++;
+					}
+				}
+
+				setStaked(arr)
+				setNumStaked(counter)
 			}).catch(err => {
 				console.error("staked: ",err)
 			})
+
     }
 
 	//get current $g4n9 token balance
 	async function getBal(){
         const currentState = onboard.getState();
+		console.log(currentState.address)
         tokenContract.methods.balanceOf(currentState.address).call({from: currentState.address})
 			.then(res => {
 				console.log("tokenBalance: ",res)
-				setBal(res)
+				setBal(ethers.utils.formatEther(res))
 			}).catch(err => {
 				console.error("tokenBalance: ",err)
 			})
@@ -258,9 +287,12 @@ const BlockNative = () => {
 				console.log("wallet: ",res)
 				setWallet(res)
 				setNumOfTroops(res.length)
+				displayNFTs()
 			}).catch(err => {
 				console.error("wallet: ",err)
 			})
+
+
     }
 
 	async function claim(){
@@ -270,6 +302,19 @@ const BlockNative = () => {
 				console.log("claim: ",res)
 			}).catch(err => {
 				console.error("claim: ",err)
+			})
+	}
+
+	async function getTotalStaked(){
+		const currentState = onboard.getState()
+		stakingContract.methods.getTotalStaked().call()
+			.then(res => {
+				console.log(res)
+				setTotalStaked(res)
+				setPercentStaked(res/100)
+			})
+			.catch(err => {
+				console.error(err)
 			})
 	}
 
@@ -288,6 +333,8 @@ const BlockNative = () => {
             setSelected(arr);
         }
     }
+
+
 
     return (
         <section>
@@ -328,7 +375,7 @@ const BlockNative = () => {
 										<div class="teamItem">
 											<div class="item">
 												<div class="itempep">
-													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[0]+".png"} alt="" />
+													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[0]+".png"} alt="media"/>
 													<div class="itembtn">
 														<a onClick={() => unstakeOne(display[0])}><span class="unstakebtn">Unstake</span></a>
 														<a onClick={() => stakeOne(display[0])}><span class="stakebtn">Stake</span></a>
@@ -338,7 +385,7 @@ const BlockNative = () => {
 											</div>
 											<div class="item">
 												<div class="itempep">
-													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[1]+".png"} alt="" />
+													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[1]+".png"} alt="media" />
 													<div class="itembtn">
 														<a onClick={() => unstakeOne(display[1])}><span class="unstakebtn">Unstake</span></a>
 														<a onClick={() => stakeOne(display[1])}><span class="stakebtn">Stake</span></a>
@@ -348,7 +395,7 @@ const BlockNative = () => {
 											</div>
 											<div class="item">
 												<div class="itempep">
-													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[2]+".png"} alt="" />
+													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[2]+".png"} alt="media" />
 													<div class="itembtn">
 														<a onClick={() => unstakeOne(display[2])}><span class="unstakebtn">Unstake</span></a>
 														<a onClick={() => stakeOne(display[2])}><span class="stakebtn">Stake</span></a>
@@ -358,7 +405,7 @@ const BlockNative = () => {
 											</div>
 											<div class="item">
 												<div class="itempep">
-													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[3]+".png"} alt="" />
+													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[3]+".png"} alt="media" />
 													<div class="itembtn">
 														<a onClick={() => unstakeOne(display[3])}><span class="unstakebtn">Unstake</span></a>
 														<a onClick={() => stakeOne(display[3])}><span class="stakebtn">Stake</span></a>
@@ -368,7 +415,7 @@ const BlockNative = () => {
 											</div>
 											<div class="item">
 												<div class="itempep">
-													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[4]+".png"} alt="" />
+													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[4]+".png"} alt="media" />
 													<div class="itembtn">
 														<a onClick={() => unstakeOne(display[4])}><span class="unstakebtn">Unstake</span></a>
 														<a onClick={() => stakeOne(display[4])}><span class="stakebtn">Stake</span></a>
@@ -378,7 +425,7 @@ const BlockNative = () => {
 											</div>
 											<div class="item">
 												<div class="itempep">
-													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[5]+".png"} alt="" />
+													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[5]+".png"} alt="media" />
 													<div class="itembtn">
 														<a onClick={() => unstakeOne(display[5])}><span class="unstakebtn">Unstake</span></a>
 														<a onClick={() => stakeOne(display[5])}><span class="stakebtn">Stake</span></a>
