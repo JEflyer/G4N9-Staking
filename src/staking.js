@@ -8,17 +8,23 @@ import {ethers} from "ethers";
 
 require("dotenv").config()
 
-const stakingContractAddress = ""
-const minterContractAddress = "0xb195991d16c1473bdF4b122A2eD0245113fCb2F9"
-const tokenContractAddress = "0x21985fc0a5Ea706e1496b5CaF5b2a1af24deC64d"
+//rinkeby
+const stakingContractAddress = "0x32E4e97d567457911A5E3aFDb68371AF68CCd50e"
+const minterContractAddress = "0x58CEc8713D09E3A9eF63c115C4B36bf113C2bd58"
+const tokenContractAddress = "0xc09B4835885d2F58469cA12f6A2caB079a12d78D"
+
+//polygon
+// const stakingContractAddress = ""
+// const minterContractAddress = "0xb195991d16c1473bdF4b122A2eD0245113fCb2F9"
+// const tokenContractAddress = "0x21985fc0a5Ea706e1496b5CaF5b2a1af24deC64d"
 
 const RPC_URL = process.env.RPC_URL;
 const INFURA_KEY = process.env.INFURA_KEY;
 
 const wallets = [
     { walletName: "metamask", preferred: true },
-    { walletName: "ledger", rpcUrl: RPC_URL,  preferred: true },
-    { walletName: "walletConnect", infuraKey: INFURA_KEY, rpcUrl: RPC_URL, preferred: true }
+    // { walletName: "ledger", rpcUrl: RPC_URL,  preferred: true },
+    // { walletName: "walletConnect", infuraKey: INFURA_KEY, preferred: true }
 ];
 
 var web3;
@@ -55,7 +61,7 @@ const BlockNative = () => {
 	const [numStaked, setNumStaked] = useState(0);
 
 	//5 NFTs that are being displayed currently
-    const [display,setDisplay] = useState(["0","0","0","0","0"])
+    const [display,setDisplay] = useState(["1","1","1","1","1", "1"])
 
 	//current $g4n9 token balance
     const [bal, setBal] = useState(0);
@@ -84,6 +90,9 @@ const BlockNative = () => {
 	//does this need a comment?
 	const [percentStaked, setPercentStaked] = useState(0);
 
+	//number of addresses that have staked
+	const [numOfAddressesStaking, setNumOfAddressesStaking] = useState(0);
+
 	//wallet login function
     async function login() {
         const walletSelected = await onboard.walletSelect();
@@ -95,7 +104,8 @@ const BlockNative = () => {
     }
 
 	//function for updating stats across UI
-	function update() {
+	async function update() {
+		await sleep(1000)
 		getPendingRewards()
 		getTroops()
 		getBal()
@@ -111,53 +121,77 @@ const BlockNative = () => {
 	//for staking a single token get approval for token then ask for to stake
     async function stakeOne(token){
         const currentState = onboard.getState()
-        await minterContract.methods.approve(stakingContractAddress, token).send({
+
+        minterContract.methods.approve(stakingContractAddress, token).send({
             from: currentState.address,
             gasPrice: '31000000000'
-        })
+        }).then(res => {
+			console.log(res)
 
-        await sleep(10000)
+			stakingContract.methods.stakeOne(token).send({
+				from: currentState.address,
+				gasPrice: '31000000000'
+			}).then(res => {
+				console.log(res)
+			}).catch(err => {
+				console.error(err)
+			})
 
-        await stakingContract.methods.stakeOne(token).send({
-            from: currentState.address,
-            gasPrice: '31000000000'
-        })
+		}).catch(err => {
+			console.error(err)
+		})        
     }
 
 	//for staking multiple tokens at once
 	//must add check to make sure there are multiple tokens
     async function stakeMul(){
         const currentState = onboard.getState()
-        await minterContract.methods.setApprovalForAll(stakingContractAddress, true).send({
+
+        minterContract.methods.setApprovalForAll(stakingContractAddress, true).send({
             from: currentState.address,
             gasPrice: '31000000000'
-        })
+        }).then(res =>{
+			console.log(res)
 
-        await sleep(10000)
+			stakingContract.methods.stakeMul(selected).send({
+				from: currentState.address,
+				gasPrice: '31000000000'
+			}).then(res => {
+				console.log(res)
+			}).catch(err => {
+				console.error(err)
+			})
 
-        await stakingContract.methods.stakeMul(selected).send({
-            from: currentState.address,
-            gasPrice: '31000000000'
-        })
+		}).catch(err => {
+			console.error(err)
+		})    
     }
 
 	//for unstaking a singe token
     async function unstakeOne(token){
         const currentState = onboard.getState()
-        await stakingContract.methods.unstakeOne(token).send({
+        stakingContract.methods.unstakeOne(token).send({
             from: currentState.address,
             gasPrice: '31000000000'
-        })
+        }).then(res => {
+			console.log(res)
+		}).catch(err => {
+			console.error(err)
+		})
     }
 
 	//for unstaking multiple tokens
 	//must add check to make sure the array has tokens in it
     async function unstakeMul(){
         const currentState = onboard.getState()
-        await stakingContract.methods.unstakeMul(selected).send({
+        stakingContract.methods.unstakeMul(selected).send({
             from: currentState.address,
             gasPrice: '31000000000'
-        })
+        }).then(res => {
+			console.log(res)
+		}).catch(err => {
+			console.error(err)
+		})
     }
 
 	//increment page
@@ -176,35 +210,68 @@ const BlockNative = () => {
 
 	//updates NFTs diplayed
 	function displayNFTs(){
-        setDisplay(wallet[0+page*5],wallet[1+page*5],wallet[2+page*5],wallet[3+page*5],wallet[4+page*5])
+        setDisplay(wallet[0+page*6],wallet[1+page*6],wallet[2+page*6],wallet[3+page*6],wallet[4+page*6], wallet[5+page*6])
     }
 
 	//for getting the current amount of tokens due to be rewarded
 	async function getPendingRewards(){
         const currentState = onboard.getState();
-        let val = ethers.utils.formatEther(await stakingContract.methods.getClaimable(currentState.address).call())
-		setPendingRewards(val)
+        stakingContract.methods.getClaimable(currentState.address).call({from: currentState.address})
+			.then(res => {
+				console.log("claimable: ",res)
+				setPendingRewards(res)
+			}).catch(err => {
+				console.error("claimable: ",err)
+			})
     }
 
 	//for getting the current tokens that are staked
 	async function getTroops(){
         const currentState = onboard.getState()
-        setStaked(await stakingContract.methods.getTokensStaked(currentState.address).call())
-		setNumStaked(staked.length)
+        stakingContract.methods.getTokensStaked(currentState.address).call({from: currentState.address})
+			.then(res => {
+				console.log("staked: ",res)
+				setStaked(res)
+				setNumStaked(res.length)
+			}).catch(err => {
+				console.error("staked: ",err)
+			})
     }
 
 	//get current $g4n9 token balance
 	async function getBal(){
         const currentState = onboard.getState();
-        setBal(await tokenContract.methods.balanceOf(currentState.address).call())
+        tokenContract.methods.balanceOf(currentState.address).call({from: currentState.address})
+			.then(res => {
+				console.log("tokenBalance: ",res)
+				setBal(res)
+			}).catch(err => {
+				console.error("tokenBalance: ",err)
+			})
     }
 
 	//for getting the tokens a user holds & set total number of troops in wallet
 	async function getWallet(){
         const currentState = onboard.getState();
-        setWallet(await minterContract.methods.walletOfOwner(currentState.address).call())
-		setNumOfTroops(wallet.length)
+        minterContract.methods.walletOfOwner(currentState.address).call({from: currentState.address})
+			.then(res => {
+				console.log("wallet: ",res)
+				setWallet(res)
+				setNumOfTroops(res.length)
+			}).catch(err => {
+				console.error("wallet: ",err)
+			})
     }
+
+	async function claim(){
+		const currentState = onboard.getState();
+		stakingContract.methods.claim().send({from: currentState.address, gasPrice: '31000000000'})
+			.then(res => {
+				console.log("claim: ",res)
+			}).catch(err => {
+				console.error("claim: ",err)
+			})
+	}
 
 	function Arr (token) {
         let bool = false;
@@ -227,6 +294,9 @@ const BlockNative = () => {
 			<div class="cryptog4n9BG">
 				<div class="container-fluid">
 					<div class="page-container">
+						<div class="connectWallet">
+							<button onClick={login}><img src="images/icons/connect.png" alt="" /></button>
+						</div>
 						<div class="brandArea">
 							<img src="images/icons/logo.png" alt="" />
 						</div>					
@@ -238,90 +308,101 @@ const BlockNative = () => {
 							   every 12-hours the barracks will reward you with $g4n9 token!
 							</p>
 						</div>
-						<div className="App">
-							<button id="connectWallet" className="connectWalletButton" onClick={login}>
-								Connect wallet
-							</button>
-							<p className="walletAddress">{wltAddress}</p>
-						</div>
 						<div class="teamGallery">
 							<img class="borderimg" src="images/border.png" alt="" />
 							<div class="insideGallery">
 								<div class="midinsideGAL">
 									<div class="insideBordHead">
-										<p>account : {wltAddress}</p>	
+										<p class="smyyy">pending $g4n9 token rewards : <span>{pendingRewards} $g4n9</span></p>	
+										<a onClick={() => claim()} class="smyy"><span>claim</span></a>
+										<p>account : <span>{wltAddress}</span></p>	
 										<div>
-											 <p>number g4n9 troops staked :{numStaked}</p>	
-											 <a href="#"><span>UNSTAKE ALL</span></a>
+											 <p>number g4n9 troops staked : <span>{numStaked} g4n9</span></p>	
+											 <a onClick={() => unstakeMul()}><span>UNSTAKE SELECTED</span></a>
 										</div>	
-										<p>daily rewards per troops : 0.5 $G4N9</p>
-										<p>your daily rewards : {0.5*numStaked} $G4N9 Per Day</p>
+										<p>daily rewards per troop : <span>0.5 $g4n9</span></p>
+										<p>your daily rewards : <span>{0.5*numStaked} $g4n9</span></p>
 									</div>	
 								
 									<div class="teamslide">
 										<div class="teamItem">
 											<div class="item">
 												<div class="itempep">
-													<img src={"ipfs://QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+display[0]+".png"} alt="" />
+													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[0]+".png"} alt="" />
 													<div class="itembtn">
-														<a onClick={stakeOne(display[0])}><span class="unstakebtn">Unstake</span></a>
-														<a onClick={unstakeOne(display[0])}><span class="viewbtn">View</span></a>
-														<a onClick={Arr(display[0])}><span class ="viewbtn">Select</span></a>
+														<a onClick={() => unstakeOne(display[0])}><span class="unstakebtn">Unstake</span></a>
+														<a onClick={() => stakeOne(display[0])}><span class="stakebtn">Stake</span></a>
+														<a onClick={() => Arr(display[0])}><span class="viewbtn">Select</span></a>
 													</div>
 												</div>
 											</div>
 											<div class="item">
 												<div class="itempep">
-													<img src={"ipfs://QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+display[1]+".png"} alt="" />
+													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[1]+".png"} alt="" />
 													<div class="itembtn">
-														<a onClick={stakeOne(display[1])}><span class="unstakebtn">Unstake</span></a>
-														<a onClick={unstakeOne(display[1])}><span class="viewbtn">View</span></a>
-														<a onClick={Arr(display[1])}><span class ="viewbtn">Select</span></a>
+														<a onClick={() => unstakeOne(display[1])}><span class="unstakebtn">Unstake</span></a>
+														<a onClick={() => stakeOne(display[1])}><span class="stakebtn">Stake</span></a>
+														<a onClick={() => Arr(display[1])}><span class="viewbtn">Select</span></a>
 													</div>
 												</div>
 											</div>
 											<div class="item">
 												<div class="itempep">
-													<img src={"ipfs://QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+display[2]+".png"} alt="" />
+													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[2]+".png"} alt="" />
 													<div class="itembtn">
-														<a onClick={stakeOne(display[2])}><span class="unstakebtn">Unstake</span></a>
-														<a onClick={unstakeOne(display[2])}><span class="viewbtn">View</span></a>
-														<a onClick={Arr(display[2])}><span class ="viewbtn">Select</span></a>
+														<a onClick={() => unstakeOne(display[2])}><span class="unstakebtn">Unstake</span></a>
+														<a onClick={() => stakeOne(display[2])}><span class="stakebtn">Stake</span></a>
+														<a onClick={() => Arr(display[2])}><span class="viewbtn">Select</span></a>
 													</div>
 												</div>
 											</div>
 											<div class="item">
 												<div class="itempep">
-													<img src={"ipfs://QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+display[3]+".png"} alt="" />
+													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[3]+".png"} alt="" />
 													<div class="itembtn">
-														<a onClick={stakeOne(display[3])}><span class="unstakebtn">Unstake</span></a>
-														<a onClick={unstakeOne(display[3])}><span class="viewbtn">View</span></a>
-														<a onClick={Arr(display[3])}><span class ="viewbtn">Select</span></a>
+														<a onClick={() => unstakeOne(display[3])}><span class="unstakebtn">Unstake</span></a>
+														<a onClick={() => stakeOne(display[3])}><span class="stakebtn">Stake</span></a>
+														<a onClick={() => Arr(display[3])}><span class="viewbtn">Select</span></a>
 													</div>
 												</div>
 											</div>
 											<div class="item">
 												<div class="itempep">
-													<img src={"ipfs://QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+display[4]+".png"} alt="" />
+													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[4]+".png"} alt="" />
 													<div class="itembtn">
-														<a onClick={stakeOne(display[4])}><span class="unstakebtn">Unstake</span></a>
-														<a onClick={unstakeOne(display[4])}><span class="viewbtn">View</span></a>
-														<a onClick={Arr(display[4])}><span class ="viewbtn">Select</span></a>
+														<a onClick={() => unstakeOne(display[4])}><span class="unstakebtn">Unstake</span></a>
+														<a onClick={() => stakeOne(display[4])}><span class="stakebtn">Stake</span></a>
+														<a onClick={() => Arr(display[4])}><span class="viewbtn">Select</span></a>
+													</div>
+												</div>
+											</div>
+											<div class="item">
+												<div class="itempep">
+													<img src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[5]+".png"} alt="" />
+													<div class="itembtn">
+														<a onClick={() => unstakeOne(display[5])}><span class="unstakebtn">Unstake</span></a>
+														<a onClick={() => stakeOne(display[5])}><span class="stakebtn">Stake</span></a>
+														<a onClick={() => Arr(display[5])}><span class="viewbtn">Select</span></a>
 													</div>
 												</div>
 											</div>
 										</div>
 									</div>
-								
+									<center>
+										<button onClick={backPage}>Back</button>
+										{page}
+										<button onClick={nextPage}>Next</button>
+									</center>
+
 									<div class="insideBordHead mxwth">
-										<p>$g4n9 balance :{bal}</p>	
+										<p>$g4n9 balance : <span>{bal} $g4n9</span></p>	
 										<div>
-											 <p>g4n9 troops : {numOfTroops}</p>	
-											 <a href="#"><span class="blue">STAKE ALL</span></a>
+											 <p>g4n9 troops : <span>{numOfTroops}</span></p>	
+											 <a onClick={() => stakeMul()}><span class="blue">STAKE SELECTED</span></a>
 										</div>	
 										<div>
-											 <p>pending $g4n9 token rewards : {pendingRewards}</p>	
-											 <a href="#"><span class="blue">claim</span></a>
+											 <p class="smnn">pending $g4n9 token rewards : <span>{pendingRewards} $g4n9</span></p>	
+											 <a onClick={() => claim()} class="smnn"><span class="blue">claim</span></a>
 										</div>	
 									</div>
 								</div>
@@ -336,7 +417,7 @@ const BlockNative = () => {
 									{totalStaked}/10000
 								</p>								
 								<p>
-									owners staking : {numStaked}
+									owners staking : {numOfAddressesStaking}
 								</p>
 							</div>
 							<div class="py-2"></div>
@@ -350,8 +431,8 @@ const BlockNative = () => {
 							<div class="py-3"></div>
 						</div>
 					</div>
-				 </div>
-			</div> 
+				</div>
+			</div>
 		</section>
     )
 }

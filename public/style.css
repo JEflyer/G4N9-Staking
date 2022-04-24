@@ -216,9 +216,33 @@ body{
 	width: 100%;
 }
 
+.smyy{
+	display: none;
+	width: 100px;
+	margin: auto;
+	text-transform: uppercase;
+	text-align: center;
+	margin-bottom: 15px;
+	background-color: #537ce3!important;
+}
+.smyyy{
+	display: none;
+}
 
+.smyy span{
+	background-color: #537ce3!important;
+	color: white!important;
+	font-weight: 400!important;
+}
 
+.connectWallet{
+	text-align: right;
+	padding: 30px 0px 20px 0px;
+}
 
+.connectWallet img{
+	width: 150px;
+}
 
 
 
