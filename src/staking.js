@@ -61,7 +61,7 @@ const BlockNative = () => {
 	const [numStaked, setNumStaked] = useState(0);
 
 	//6 NFTs that are being displayed currently
-    const [display,setDisplay] = useState(["1","1","1","1","1","1"])
+    const [display,setDisplay] = useState([0,0,0,0,0,0])
 
 	//current $g4n9 token balance
     const [bal, setBal] = useState(0);
@@ -81,11 +81,13 @@ const BlockNative = () => {
 	//array of tokens the user holds
     const [wallet,setWallet] = useState([])
 
-	//int for storing what page of 5 NFTs are being viewed
-    const [page, setPage] = useState(0)
-
 	//array of tokens the user has already staked
 	const [staked, setStaked] = useState([])
+
+	const [fullWallet,setFullWallet] = useState([])
+
+	//int for storing what page of 5 NFTs are being viewed
+    const [page, setPage] = useState(0)
 
 	//does this need a comment?
 	const [percentStaked, setPercentStaked] = useState(0);
@@ -215,13 +217,71 @@ const BlockNative = () => {
         setDisplay([wallet[0+page*6],wallet[1+page*6],wallet[2+page*6],wallet[3+page*6],wallet[4+page*6], wallet[5+page*6]])	
 	}
 
+	function joinTokens(){
+		let arr = [];
+		for(let i = 0; i< wallet.length+staked.length;i++){
+			if(i < wallet.length){
+				arr[i]=wallet[i]
+			}else {
+				arr[i] = staked[i-wallet.length]
+			}
+		}
+	}
+
+	//set buttons
+	//if display[i] is staked then the stake button shall be disabled
+	//if display[i] is not staked then the unstake button should be disabled
+	function setButtons(i){
+		if(isStaked(display[i])){
+			document.getElementById("stake"+i).disabled = true
+			document.getElementById("unstake"+i).disabled = false
+			if(selectIsStaked()){
+				document.getElementById("select"+i).disabled = false
+			}
+		}else {
+			document.getElementById("stake"+i).disabled = false
+			document.getElementById("unstake"+i).disabled = true
+			if(selectIsStaked()){
+				document.getElementById("select"+i).disabled = true
+			}
+		}
+	}
+
+	//check if staked
+	function isStaked(token){
+		for(let i = 0; i< staked.length; i++){
+			if(token == staked[i]){
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function selectIsStaked(){
+		for(let i = 0; i < staked.length; i++){
+			if(selected[0] == staked[i]){
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function setImages(){
+		for(let i = 1; i <= 6; i++){
+			if(display[i] == 0){
+				document.getElementById("image"+i).src = "images/HIDDEN.gif"
+				document.getElementById("stake"+i).disabled = true
+				document.getElementById("unstake"+i).disabled = true
+				document.getElementById("select"+i).disabled = true
+			}else {
+				document.getElementById("image"+i).src = "https://ipfs.io/ipfs/QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+wallet[i+page*6]+".png";
+				setButtons(i)
+			}
+		}
+	}
+
 	useEffect(() => {
-		document.getElementById("image1").src = "https://ipfs.io/ipfs/QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+wallet[0+page*6]+".png";
-		document.getElementById("image2").src = "https://ipfs.io/ipfs/QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+wallet[1+page*6]+".png";
-		document.getElementById("image3").src = "https://ipfs.io/ipfs/QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+wallet[2+page*6]+".png";
-		document.getElementById("image4").src = "https://ipfs.io/ipfs/QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+wallet[3+page*6]+".png";
-		document.getElementById("image5").src = "https://ipfs.io/ipfs/QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+wallet[4+page*6]+".png";
-		document.getElementById("image6").src = "https://ipfs.io/ipfs/QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+wallet[5+page*6]+".png";
+		setImages()
 	})
 
 	//for getting the current amount of tokens due to be rewarded
@@ -343,6 +403,11 @@ const BlockNative = () => {
         }
     }
 
+	//if a staked token is selected then the select buttons for all unstaked tokens should be disabled...
+	//...the stake selected button should be disabled
+
+	//if a unstaked token is selected then the select buttons for all staked tokens should be disabled...
+	//...the unstake selected button should be disabled
 
 
     return (
@@ -386,9 +451,9 @@ const BlockNative = () => {
 												<div class="itempep">
 													<img id="image1" src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[0]+".png"} alt="media"/>
 													<div class="itembtn">
-														<a onClick={() => unstakeOne(display[0])}><span class="unstakebtn">Unstake</span></a>
-														<a onClick={() => stakeOne(display[0])}><span class="stakebtn">Stake</span></a>
-														<a onClick={() => Arr(display[0])}><span class="viewbtn">Select</span></a>
+														<button onClick={() => unstakeOne(display[0])}><span class="unstakebtn" id="unstake1">Unstake</span></button>
+														<button onClick={() => stakeOne(display[0])}><span class="stakebtn" id="stake1">Stake</span></button>
+														<button onClick={() => Arr(display[0])}><span class="viewbtn" id="select1">Select</span></button>
 													</div>
 												</div>
 											</div>
@@ -396,9 +461,9 @@ const BlockNative = () => {
 												<div class="itempep">
 													<img id="image2" src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[1]+".png"} alt="media" />
 													<div class="itembtn">
-														<a onClick={() => unstakeOne(display[1])}><span class="unstakebtn">Unstake</span></a>
-														<a onClick={() => stakeOne(display[1])}><span class="stakebtn">Stake</span></a>
-														<a onClick={() => Arr(display[1])}><span class="viewbtn">Select</span></a>
+														<button onClick={() => unstakeOne(display[1])}><span class="unstakebtn" id="unstake2">Unstake</span></button>
+														<button onClick={() => stakeOne(display[1])}><span class="stakebtn" id="stake2">Stake</span></button>
+														<button onClick={() => Arr(display[1])}><span class="viewbtn" id="select2">Select</span></button>
 													</div>
 												</div>
 											</div>
@@ -406,9 +471,9 @@ const BlockNative = () => {
 												<div class="itempep">
 													<img id="image3" src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[2]+".png"} alt="media" />
 													<div class="itembtn">
-														<a onClick={() => unstakeOne(display[2])}><span class="unstakebtn">Unstake</span></a>
-														<a onClick={() => stakeOne(display[2])}><span class="stakebtn">Stake</span></a>
-														<a onClick={() => Arr(display[2])}><span class="viewbtn">Select</span></a>
+														<button onClick={() => unstakeOne(display[2])}><span class="unstakebtn" id="unstake3">Unstake</span></button>
+														<button onClick={() => stakeOne(display[2])}><span class="stakebtn" id="stake3">Stake</span></button>
+														<button onClick={() => Arr(display[2])}><span class="viewbtn" id="select3">Select</span></button>
 													</div>
 												</div>
 											</div>
@@ -416,9 +481,9 @@ const BlockNative = () => {
 												<div class="itempep">
 													<img id="image4" src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[3]+".png"} alt="media" />
 													<div class="itembtn">
-														<a onClick={() => unstakeOne(display[3])}><span class="unstakebtn">Unstake</span></a>
-														<a onClick={() => stakeOne(display[3])}><span class="stakebtn">Stake</span></a>
-														<a onClick={() => Arr(display[3])}><span class="viewbtn">Select</span></a>
+														<button onClick={() => unstakeOne(display[3])}><span class="unstakebtn" id="unstake4">Unstake</span></button>
+														<button onClick={() => stakeOne(display[3])}><span class="stakebtn" id="stake4">Stake</span></button>
+														<button onClick={() => Arr(display[3])}><span class="viewbtn" id="select4">Select</span></button>
 													</div>
 												</div>
 											</div>
@@ -426,9 +491,9 @@ const BlockNative = () => {
 												<div class="itempep">
 													<img id="image5" src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[4]+".png"} alt="media" />
 													<div class="itembtn">
-														<a onClick={() => unstakeOne(display[4])}><span class="unstakebtn">Unstake</span></a>
-														<a onClick={() => stakeOne(display[4])}><span class="stakebtn">Stake</span></a>
-														<a onClick={() => Arr(display[4])}><span class="viewbtn">Select</span></a>
+														<button onClick={() => unstakeOne(display[4])}><span class="unstakebtn" id="unstake5">Unstake</span></button>
+														<button onClick={() => stakeOne(display[4])}><span class="stakebtn" id="stake5">Stake</span></button>
+														<button onClick={() => Arr(display[4])}><span class="viewbtn" id="select5">Select</span></button>
 													</div>
 												</div>
 											</div>
@@ -436,9 +501,9 @@ const BlockNative = () => {
 												<div class="itempep">
 													<img id="image6" src={"https://bafybeidi7uvvnvtoof6syceve7cdzztb5rbonfoeshaglkctt7m4xem52u.ipfs.dweb.link/"+display[5]+".png"} alt="media" />
 													<div class="itembtn">
-														<a onClick={() => unstakeOne(display[5])}><span class="unstakebtn">Unstake</span></a>
-														<a onClick={() => stakeOne(display[5])}><span class="stakebtn">Stake</span></a>
-														<a onClick={() => Arr(display[5])}><span class="viewbtn">Select</span></a>
+														<button onClick={() => unstakeOne(display[5])}><span class="unstakebtn" id="unstake6">Unstake</span></button>
+														<button onClick={() => stakeOne(display[5])}><span class="stakebtn" id="stake6">Stake</span></button>
+														<button onClick={() => Arr(display[5])}><span class="viewbtn" id="select6">Select</span></button>
 													</div>
 												</div>
 											</div>
