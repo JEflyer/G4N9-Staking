@@ -112,6 +112,7 @@ const BlockNative = () => {
 		await getTroops()
 		await getTotalStaked()
 		await getPendingRewards()
+		joinTokens()
 		displayNFTs()
 
 	}
@@ -200,15 +201,19 @@ const BlockNative = () => {
 	//increment page
 	//add checks to make sure the tokens will be on the next page
 	function nextPage(){
-        setPage(page+1)
-        displayNFTs()
-    }
+		if((page+1)*6 <fullWallet.length ){
+			setPage(page+1)
+			displayNFTs()
+		}
+	}
 
 	//decrement page
 	//add checks to make sure tokens will be on next page
     function backPage(){
-        setPage(page-1)
-        displayNFTs()
+        if(page-1 != -1 ){
+			setPage(page-1)
+			displayNFTs()
+		}
     }
 
 	//updates NFTs diplayed
@@ -217,6 +222,8 @@ const BlockNative = () => {
         setDisplay([wallet[0+page*6],wallet[1+page*6],wallet[2+page*6],wallet[3+page*6],wallet[4+page*6], wallet[5+page*6]])	
 	}
 
+	//function for joining wallet & staked token lists
+	//values are coming through as undefined 
 	function joinTokens(){
 		let arr = [];
 		for(let i = 0; i< wallet.length+staked.length;i++){
@@ -228,7 +235,15 @@ const BlockNative = () => {
 		}
 	}
 
+
 	//set buttons
+
+	//if a staked token is selected then the select buttons for all unstaked tokens should be disabled...
+	//...the stake selected button should be disabled
+
+	//if a unstaked token is selected then the select buttons for all staked tokens should be disabled...
+	//...the unstake selected button should be disabled
+
 	//if display[i] is staked then the stake button shall be disabled
 	//if display[i] is not staked then the unstake button should be disabled
 	function setButtons(i){
@@ -237,12 +252,16 @@ const BlockNative = () => {
 			document.getElementById("unstake"+i).disabled = false
 			if(selectIsStaked()){
 				document.getElementById("select"+i).disabled = false
+				document.getElementById("unstakeAll").disabled = false
+				document.getElementById("stakeAll").disabled = true
 			}
 		}else {
 			document.getElementById("stake"+i).disabled = false
 			document.getElementById("unstake"+i).disabled = true
 			if(selectIsStaked()){
 				document.getElementById("select"+i).disabled = true
+				document.getElementById("unstakeAll").disabled = true
+				document.getElementById("stakeAll").disabled = false
 			}
 		}
 	}
@@ -257,6 +276,7 @@ const BlockNative = () => {
 		return false;
 	}
 
+	//check if the first selected token is in array of staked tokens
 	function selectIsStaked(){
 		for(let i = 0; i < staked.length; i++){
 			if(selected[0] == staked[i]){
@@ -268,13 +288,13 @@ const BlockNative = () => {
 
 	function setImages(){
 		for(let i = 1; i <= 6; i++){
-			if(display[i] == 0){
+			if(display[i-1] == 0){
 				document.getElementById("image"+i).src = "images/HIDDEN.gif"
 				document.getElementById("stake"+i).disabled = true
 				document.getElementById("unstake"+i).disabled = true
 				document.getElementById("select"+i).disabled = true
 			}else {
-				document.getElementById("image"+i).src = "https://ipfs.io/ipfs/QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+wallet[i+page*6]+".png";
+				document.getElementById("image"+i).src = "https://ipfs.io/ipfs/QmVQV1nQ4LYX3dKCtN3WWq4vabUYkWynu9D3c5PhVzQqwr/"+wallet[(i-1)+page*6]+".png";
 				setButtons(i)
 			}
 		}
@@ -329,10 +349,10 @@ const BlockNative = () => {
 
 				setStaked(arr)
 				setNumStaked(counter)
+
 			}).catch(err => {
 				console.error("staked: ",err)
 			})
-
     }
 
 	//get current $g4n9 token balance
@@ -387,27 +407,26 @@ const BlockNative = () => {
 			})
 	}
 
+	//This function should check what is currently the selectedType(staked/unstaked) & allow or deny selection based upon that 
 	function Arr (token) {
-        let bool = false;
-        for(let i = 0; i< selected.length; i++){
-            if(selected[i] === token){
-                let arr = selected.splice(i,1)
-                setSelected(arr)
-                bool = true
-            }
-        }
-        if(!bool){
-            let arr = selected 
-            arr[arr.length] = token
-            setSelected(arr);
-        }
+		if((selectIsStaked() && isStaked(token)) || (!selectIsStaked() && !isStaked(token))){
+			let bool = false;
+			for(let i = 0; i< selected.length; i++){
+				if(selected[i] === token){
+					let arr = selected.splice(i,1)
+					setSelected(arr)
+					bool = true
+				}
+			}
+			if(!bool){
+				let arr = selected 
+				arr[arr.length] = token
+				setSelected(arr);
+			}
+		}
     }
 
-	//if a staked token is selected then the select buttons for all unstaked tokens should be disabled...
-	//...the stake selected button should be disabled
-
-	//if a unstaked token is selected then the select buttons for all staked tokens should be disabled...
-	//...the unstake selected button should be disabled
+	
 
 
     return (
@@ -439,7 +458,7 @@ const BlockNative = () => {
 										<p>account : <span>{wltAddress}</span></p>	
 										<div>
 											 <p>number g4n9 troops staked : <span>{numStaked} g4n9</span></p>	
-											 <a onClick={() => unstakeMul()}><span>UNSTAKE SELECTED</span></a>
+											 <button onClick={() => unstakeMul()} id="unstakeAll"><span>UNSTAKE SELECTED</span></button>
 										</div>	
 										<p>daily rewards per troop : <span>0.5 $g4n9</span></p>
 										<p>your daily rewards : <span>{0.5*numStaked} $g4n9</span></p>
@@ -519,11 +538,11 @@ const BlockNative = () => {
 										<p>$g4n9 balance : <span>{bal} $g4n9</span></p>	
 										<div>
 											 <p>g4n9 troops : <span>{numOfTroops}</span></p>	
-											 <a onClick={() => stakeMul()}><span class="blue">STAKE SELECTED</span></a>
+											 <button onClick={() => stakeMul()} id="stakeAll"><span class="blue">STAKE SELECTED</span></button>
 										</div>	
 										<div>
 											 <p class="smnn">pending $g4n9 token rewards : <span>{pendingRewards} $g4n9</span></p>	
-											 <a onClick={() => claim()} class="smnn"><span class="blue">claim</span></a>
+											 <button onClick={() => claim()} class="smnn"><span class="blue">claim</span></button>
 										</div>	
 									</div>
 								</div>
